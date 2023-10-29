@@ -1,9 +1,9 @@
-FILES = build/kernel.asm.o build/kernel.o build/idt/idt.asm.o build/idt/idt.o build/memory/memory.o build/io/io.asm.o build/memory/heap/heap.o build/memory/heap/kheap.o build/memory/paging/paging.asm.o build/memory/paging/paging.o build/disk/disk.o build/fs/pparser.o build/string/string.o build/disk/streamer.o build/fs/file.o build/fs/fat/fat16.o
+FILES = build/kernel.asm.o build/kernel.o build/idt/idt.asm.o build/idt/idt.o build/memory/memory.o build/io/io.asm.o build/gdt/gdt.o build/gdt/gdt.asm.o build/memory/heap/heap.o build/memory/heap/kheap.o build/memory/paging/paging.asm.o build/memory/paging/paging.o build/disk/disk.o build/fs/pparser.o build/string/string.o build/disk/streamer.o build/fs/file.o build/fs/fat/fat16.o build/task/tss.asm.o build/task/task.o build/task/process.o build/task/task.asm.o build/isr80h/isr80h.o build/isr80h/heap.o build/isr80h/misc.o build/isr80h/io.o build/isr80h/process.o build/keyboard/keyboard.o build/keyboard/classic.o build/loader/formats/elf.o build/loader/formats/elfloader.o
 
 INCLUDES = -Isrc
 FLAGS = -g -ffreestanding -falign-jumps -falign-functions -falign-labels -falign-loops -fstrength-reduce -fomit-frame-pointer -finline-functions -Wno-unused-function -fno-builtin -Werror -Wno-unused-label -Wno-cpp -Wno-unused-parameter -nostdlib -nostartfiles -nodefaultlibs -Wall -O0 -Iinc
 
-all: bin/boot.bin bin/kernel.bin
+all: bin/boot.bin bin/kernel.bin user_programs
 	rm -rf bin/os.bin
 	dd if=bin/boot.bin >> bin/os.bin
 	dd if=bin/kernel.bin >> bin/os.bin
@@ -11,6 +11,9 @@ all: bin/boot.bin bin/kernel.bin
 	sudo mount -t vfat ./bin/os.bin /mnt/d
 	# Copy a file over
 	sudo cp ./hello.txt /mnt/d
+	sudo cp ./programs/blank/blank.elf /mnt/d
+	sudo cp ./programs/shell/shell.elf /mnt/d
+
 	sudo umount /mnt/d
 
 bin/kernel.bin: $(FILES)
@@ -32,8 +35,53 @@ build/idt/idt.asm.o: src/idt/idt.asm
 build/idt/idt.o: src/idt/idt.c
 	i686-elf-gcc $(INCLUDES) -Isrc/idt $(FLAGS) -std=gnu99 -c src/idt/idt.c -o build/idt/idt.o
 
+build/loader/formats/elf.o: src/loader/formats/elf.c
+	i686-elf-gcc $(INCLUDES) -Isrc/loader/formats $(FLAGS) -std=gnu99 -c ./src/loader/formats/elf.c -o ./build/loader/formats/elf.o
+
+build/loader/formats/elfloader.o: src/loader/formats/elfloader.c
+	i686-elf-gcc $(INCLUDES) -Isrc/loader/formats $(FLAGS) -std=gnu99 -c src/loader/formats/elfloader.c -o build/loader/formats/elfloader.o
+
+build/isr80h/isr80h.o: src/isr80h/isr80h.c
+	i686-elf-gcc $(INCLUDES) -Isrc/isr80h $(FLAGS) -std=gnu99 -c src/isr80h/isr80h.c -o build/isr80h/isr80h.o
+
+build/isr80h/heap.o: src/isr80h/heap.c
+	i686-elf-gcc $(INCLUDES) -Isrc/isr80h $(FLAGS) -std=gnu99 -c src/isr80h/heap.c -o build/isr80h/heap.o
+
+build/isr80h/misc.o: src/isr80h/misc.c
+	i686-elf-gcc $(INCLUDES) -Isrc/isr80h $(FLAGS) -std=gnu99 -c src/isr80h/misc.c -o build/isr80h/misc.o
+
+build/isr80h/io.o: src/isr80h/io.c
+	i686-elf-gcc $(INCLUDES) -Isrc/isr80h $(FLAGS) -std=gnu99 -c src/isr80h/io.c -o build/isr80h/io.o
+
+build/isr80h/process.o: src/isr80h/process.c
+	i686-elf-gcc $(INCLUDES) -Isrc/isr80h $(FLAGS) -std=gnu99 -c src/isr80h/process.c -o build/isr80h/process.o
+
+build/keyboard/keyboard.o: src/keyboard/keyboard.c
+	i686-elf-gcc $(INCLUDES) -Isrc/keyboard $(FLAGS) -std=gnu99 -c src/keyboard/keyboard.c -o build/keyboard/keyboard.o
+
+build/keyboard/classic.o: src/keyboard/classic.c
+	i686-elf-gcc $(INCLUDES) -Isrc/keyboard $(FLAGS) -std=gnu99 -c src/keyboard/classic.c -o build/keyboard/classic.o
+
+build/gdt/gdt.o: src/gdt/gdt.c
+	i686-elf-gcc $(INCLUDES) -Isrc/gdt $(FLAGS) -std=gnu99 -c src/gdt/gdt.c -o build/gdt/gdt.o
+
+build/gdt/gdt.asm.o: src/gdt/gdt.asm
+	nasm -f elf -g src/gdt/gdt.asm -o build/gdt/gdt.asm.o
+
 build/memory/memory.o: src/memory/memory.c
 	i686-elf-gcc $(INCLUDES) -Isrc/memory $(FLAGS) -std=gnu99 -c src/memory/memory.c -o build/memory/memory.o
+
+build/task/process.o: src/task/process.c
+	i686-elf-gcc $(INCLUDES) -Isrc/task $(FLAGS) -std=gnu99 -c src/task/process.c -o build/task/process.o
+
+build/task/task.o: src/task/task.c
+	i686-elf-gcc $(INCLUDES) -Isrc/task $(FLAGS) -std=gnu99 -c src/task/task.c -o build/task/task.o
+
+build/task/task.asm.o: src/task/task.asm
+	nasm -f elf -g src/task/task.asm -o build/task/task.asm.o
+
+build/task/tss.asm.o: src/task/tss.asm
+	nasm -f elf -g src/task/tss.asm -o build/task/tss.asm.o
 
 build/io/io.asm.o: src/io/io.asm
 	nasm -f elf -g src/io/io.asm -o build/io/io.asm.o
@@ -68,7 +116,20 @@ build/fs/pparser.o: src/fs/pparser.c
 build/string/string.o: src/string/string.c
 	i686-elf-gcc $(INCLUDES) -Isrc/string $(FLAGS) -std=gnu99 -c src/string/string.c -o build/string/string.o
 
-clean:
+user_programs:
+	cd programs/stdlib && $(MAKE) all
+	cd programs/blank && ${MAKE} all
+	cd programs/shell && $(MAKE) all
+
+
+user_programs_clean:
+	cd programs/stdlib && $(MAKE) clean
+	cd programs/blank && ${MAKE} clean
+	cd programs/shell && $(MAKE) clean
+
+
+
+clean: user_programs_clean
 	rm -rf bin/boot.bin
 	rm -rf bin/kernel.bin
 	rm -rf bin/os.bin

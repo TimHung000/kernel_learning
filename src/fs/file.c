@@ -124,6 +124,7 @@ int fopen(const char* filename, const char* mode_str) {
 
     if (!disk->filesystem) {
         res = -EIO;
+        goto out;
     }
 
     FILE_MODE mode = file_get_mode_by_string(mode_str);
